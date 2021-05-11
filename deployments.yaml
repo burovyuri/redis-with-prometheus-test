@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: primary-deployment
+  labels:
+    name: redis-primary
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      name: redis-primary
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
+      labels:
+        name: redis-primary
+    spec:
+      subdomain: primary
+      containers:
+      - name: redis
+        image: redis
+        command:
+          - "redis-server"
+        args:
+          - "--databases"
+          - "90"
+          - "--protected-mode"
+          - "no"
+        ports:
+        - containerPort: 6379
+      - name: redis-exporter
+        image: oliver006/redis_exporter:latest
+        ports:
+        - containerPort: 9121
+---
+ apiVersion: apps/v1
+ kind: Deployment
+ metadata:
+   name: replica-deployment
+   labels:
+     name: redis-replica
+ spec:
+   replicas: 2
+   selector:
+     matchLabels:
+       name: redis-replica
+   template:
+     metadata:
+       labels:
+         name: redis-replica
+     spec:
+       subdomain: replica
+       containers:
+       - name: redis
+         image: redis
+         command:
+           - "redis-server"
+         args:
+           - "--slaveof"
+           - "primary.default.svc.cluster.local"
+           - "6379"
+           - "--protected-mode"
+           - "no"
+         ports:
+         - containerPort: 6379
